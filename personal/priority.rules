@@ -1,0 +1,9 @@
+# Highest priority: personal exceptions, targeted blocks, explicit proxy routing.
+# Uncomment only after testing. These override the upstream rules.
+# DOMAIN,maplocatesdksnapshot.d.meituan.net,REJECT
+# DOMAIN,metrics-picture.d.meituan.net,REJECT
+# DOMAIN,al-log.d.meituan.net,REJECT
+# DOMAIN-SUFFIX,chatgpt.com,PROXY
+# DOMAIN-SUFFIX,openai.com,PROXY
+# DOMAIN-SUFFIX,claude.ai,PROXY
+# DOMAIN-SUFFIX,anthropic.com,PROXY

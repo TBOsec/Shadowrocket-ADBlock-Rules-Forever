@@ -1,0 +1,33 @@
+name: Build personal Shadowrocket configuration
+on:
+  workflow_dispatch:
+  schedule:
+    # 09:23 Beijing time (UTC+8), daily
+    - cron: '23 1 * * *'
+permissions:
+  contents: write
+concurrency:
+  group: shadowrocket-personal-build
+  cancel-in-progress: false
+jobs:
+  build:
+    if: github.ref_name == github.event.repository.default_branch
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Test generator
+        run: python3 -m unittest discover -s tests -v
+      - name: Generate configuration
+        run: python3 scripts/build.py
+      - name: Publish changed configuration
+        run: |
+          git add -- dist/sr_personal.conf
+          if git diff --cached --quiet; then
+            echo 'No changes'
+            exit 0
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git commit -m 'chore: refresh personal Shadowrocket rules'
+          git push origin HEAD

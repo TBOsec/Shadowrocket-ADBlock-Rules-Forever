@@ -1,0 +1,4 @@
+# Optional [Host] mappings; do not map unverified business domains by default.
+# maplocatesdksnapshot.d.meituan.net = 0.0.0.0
+# metrics-picture.d.meituan.net = 0.0.0.0
+# al-log.d.meituan.net = 0.0.0.0

@@ -1,0 +1,9 @@
+# Low priority: curated DIRECT domains after upstream rules, before GEOIP.
+# Keep narrow; add domains only after checking routing and ad filtering.
+DOMAIN-SUFFIX,qq.com,DIRECT
+DOMAIN-SUFFIX,taobao.com,DIRECT
+DOMAIN-SUFFIX,tmall.com,DIRECT
+DOMAIN-SUFFIX,jd.com,DIRECT
+DOMAIN-SUFFIX,meituan.com,DIRECT
+DOMAIN-SUFFIX,meituan.net,DIRECT
+# DOMAIN-SUFFIX,bilibili.com,DIRECT
