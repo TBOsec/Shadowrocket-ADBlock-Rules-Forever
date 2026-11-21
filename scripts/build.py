@@ -44,7 +44,7 @@ def parse(text):
     return preamble, sections
 
 
-def replace_general(lines, changes):
+def replace_settings(lines, changes):
     out, seen = [], set()
     lookup = {k.lower(): (k, v) for k, v in changes.items()}
     for line in lines:
@@ -53,11 +53,11 @@ def replace_general(lines, changes):
             out.append(line)
         elif key not in seen:
             k, v = lookup[key]
-            out.append(f'{k} = {v}')
+            out.append(f'{k} = {v}'.rstrip())
             seen.add(key)
     for key, (k, v) in lookup.items():
         if key not in seen:
-            out.append(f'{k} = {v}')
+            out.append(f'{k} = {v}'.rstrip())
     return out
 
 
@@ -100,7 +100,7 @@ def generate(text, cfg, priority, domestic, hosts, min_rules=10000):
     general = cfg['general']
     if any(not isinstance(v, str) or '\n' in v or '\r' in v for v in general.values()):
         raise ValueError('general values must be single-line strings')
-    by_name['general'][:] = replace_general(by_name['general'], general)
+    by_name['general'][:] = replace_settings(by_name['general'], general)
     modified, patched = [], 0
     for i, line in enumerate(original):
         if i == geo[0]:
@@ -132,6 +132,14 @@ def generate(text, cfg, priority, domestic, hosts, min_rules=10000):
             if name.lower() in expected and any(l.strip() != expected[name.lower()] for l in lines if active(l)):
                 raise ValueError(f'new {name} content; review before removal')
         sections = [(k, v) for k, v in sections if k.lower() not in expected]
+    elif cfg.get('enable_mitm'):
+        if not {'url rewrite', 'mitm'} <= by_name.keys():
+            raise ValueError('upstream rewrite or MITM section missing')
+        by_name['mitm'][:] = replace_settings(by_name['mitm'], {
+            'enable': 'true',
+            'ca-passphrase': '',
+            'ca-p12': '',
+        })
     header = preamble + [f'# Modified personal configuration; source: {UPSTREAM}', '# Upstream: Moshel and Johnshall; derivative: CC BY-SA 4.0 (https://creativecommons.org/licenses/by-sa/4.0/)', f'# Upstream active rule count: {len(rules)}', f'# Telegram IP rules patched: {patched}']
     result = '\n'.join(header + [line for k, v in sections for line in [f'[{k}]', *v]]) + '\n'
     return result, len(rules), patched

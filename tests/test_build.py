@@ -28,7 +28,11 @@ class TestBuild(unittest.TestCase):
 
     def test_configuration_and_order(self):
         s = self.run_build(priority=['DOMAIN,ads.example.com,DIRECT'], domestic=['DOMAIN-SUFFIX,qq.com,DIRECT'])
-        self.assertIn('dns-server = https://223.5.5.5/dns-query', s)
+        self.assertIn('dns-server = https://8.8.8.8/dns-query#proxy,https://1.1.1.1/dns-query#proxy\n', s)
+        self.assertIn('fallback-dns-server = https://223.5.5.5/dns-query,https://223.6.6.6/dns-query\n', s)
+        self.assertIn('direct-dns-server = https://223.5.5.5/dns-query,https://1.12.12.12/dns-query\n', s)
+        self.assertIn('include = default.conf\n', s)
+        self.assertIn('update-url = https://raw.githubusercontent.com/TBOsec/Shadowrocket-ADBlock-Rules-Forever/personal/dist/sr_personal.conf\n', s)
         self.assertNotIn('dns-server = https://doh.pub', s)
         self.assertIn('bypass-system = true', s)
         self.assertIn('91.108.56.0/22,Proxy,no-resolve', s)
@@ -36,8 +40,9 @@ class TestBuild(unittest.TestCase):
         self.assertLess(s.index('DOMAIN,ads.example.com,DIRECT'), s.index('DOMAIN-SUFFIX,ads.example.com,Reject'))
         self.assertLess(s.index('DOMAIN-SUFFIX,ads.example.com,Reject'), s.index('DOMAIN-SUFFIX,qq.com,DIRECT'))
         self.assertLess(s.index('DOMAIN-SUFFIX,qq.com,DIRECT'), s.index('GEOIP,CN,DIRECT'))
-        self.assertNotIn('[MITM]', s)
-        self.assertNotIn('[URL Rewrite]', s)
+        self.assertIn('[URL Rewrite]', s)
+        self.assertIn('https://www.google.com 302', s)
+        self.assertIn('[MITM]\nhostname = *.google.cn,*.googlevideo.com\nenable = true\nca-passphrase =\nca-p12 =\n', s)
         self.assertNotIn('ChinaMaxNoIP.list', s)
 
     def test_optional_switches(self):
@@ -51,9 +56,25 @@ class TestBuild(unittest.TestCase):
         self.assertNotIn('no-resolve', s)
 
     def test_bad_upstream(self):
-        for text in [FIXTURE.replace('FINAL,proxy', 'FINAL,DIRECT'), FIXTURE.replace('GEOIP,CN,DIRECT',''), FIXTURE.replace('hostname = *.google.cn,*.googlevideo.com', 'hostname = *.bank.example'), '<html>error</html>']:
+        for text in [FIXTURE.replace('FINAL,proxy', 'FINAL,DIRECT'), FIXTURE.replace('GEOIP,CN,DIRECT',''), FIXTURE.replace('[MITM]', '[Other]'), '<html>error</html>']:
             with self.subTest(text=text), self.assertRaises(ValueError):
                 self.run_build(text=text)
+
+    def test_mitm_removal_still_checks_upstream_content(self):
+        cfg = {**CFG, 'remove_google_rewrite_and_mitm': True, 'enable_mitm': False}
+        result = self.run_build(cfg=cfg)
+        self.assertNotIn('[MITM]', result)
+        self.assertNotIn('[URL Rewrite]', result)
+        changed = FIXTURE.replace('hostname = *.google.cn,*.googlevideo.com', 'hostname = *.bank.example')
+        with self.assertRaisesRegex(ValueError, 'new MITM content'):
+            self.run_build(text=changed, cfg=cfg)
+
+    def test_mitm_credentials_stay_blank(self):
+        text = FIXTURE + 'ca-passphrase = sample-password\nCA-P12 = sample-certificate\nenable = false\n'
+        result = self.run_build(text=text)
+        self.assertIn('ca-passphrase =\nca-p12 =\nenable = true\n', result)
+        self.assertNotIn('sample-password', result)
+        self.assertNotIn('sample-certificate', result)
 
     def test_invalid_custom_rule(self):
         with self.assertRaises(ValueError):
